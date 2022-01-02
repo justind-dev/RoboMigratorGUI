@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace RoboMigratorGUI
 {
-    class BackupJob
+    public class BackupJob
     {
         private string _sourceDirectory;
         private string _destinationDirectory;
@@ -12,60 +12,56 @@ namespace RoboMigratorGUI
         private List<RoboCommand> _jobList;
         private List<RoboSharp.Results.RoboCopyResults> _jobResults;
         private Stopwatch copyTime = new Stopwatch();
-        public string logPath;
-        public string status;
-        public int totalJobs = 0;
-        public int completedJobs = 0;
-        public int runningJobs = 0;
-        public BackupJob(string sourceDirectory, string destinationDirectory)
+        private string _logDirectory;
+        private string _status;
+        private int _totalJobs = 0;
+        private int _completedJobs = 0;
+        private int _runningJobs = 0;
+        public BackupJob(string sourceDirectory, string destinationDirectory, string logDirectory)
         {
             _sourceDirectory = sourceDirectory;
             _destinationDirectory = destinationDirectory;
+            _logDirectory = logDirectory;
             _maxJobs = 8;
             _jobs = new Dictionary<string, string>();
             _jobList = new List<RoboCommand>();
             _jobResults = new List<RoboSharp.Results.RoboCopyResults>();
-            logPath = @"";
-            status = "No Status";
+            _status = "No Status";
             CreateJobs();
         }
 
         public void Start()
         {
-            totalJobs = _jobList.Count;
-            runningJobs = GetRunningJobs();
+            _totalJobs = _jobList.Count;
+            _runningJobs = GetRunningJobs();
             copyTime.Start();
-            if (_jobList.Count > 0)
+            if (_jobList.Count <= 0) return;
+            
+            while (_jobResults.Count < _totalJobs)
             {
-                while (_jobResults.Count < totalJobs)
+                foreach (var job in _jobList.Where(job => !job.IsRunning & !job.IsPaused))
                 {
-                    foreach (RoboCommand job in _jobList)
+                    _status = "Migrating: " + job.CopyOptions.Source;
+                    asyncRun(job);
+                    _runningJobs = GetRunningJobs();
+                    while (_runningJobs >= _maxJobs && _runningJobs > 0)
                     {
-                        if (!job.IsRunning & !job.IsPaused)
-                        {
-                            status = "Migrating: " + job.CopyOptions.Source.ToString();
-                            asyncRun(job);
-                            runningJobs = GetRunningJobs();
-                            while (runningJobs >= _maxJobs && runningJobs > 0)
-                            {
-                                Thread.Sleep(2000);
-                                runningJobs = GetRunningJobs();
-                                status = "Jobs Running: " + runningJobs.ToString();
-                            }
-                        }
+                        Thread.Sleep(2000);
+                        _runningJobs = GetRunningJobs();
+                        _status = "Jobs Running: " + _runningJobs;
                     }
                 }
-
-                copyTime.Stop();
-                string message = "Migration completed in:\n" +
-                                 "Hours: " + copyTime.Elapsed.Hours.ToString() + "\n" +
-                                 "Seconds: " + copyTime.Elapsed.Seconds.ToString() + "\n" +
-                                 "Milliseconds: " + copyTime.Elapsed.Milliseconds.ToString();
-
-                string caption = "Migration Completed";
-                MessageBoxButtons buttons = MessageBoxButtons.OK;
-                MessageBox.Show(message, caption, buttons);
             }
+
+            copyTime.Stop();
+            var message = "Migration completed in:\n" +
+                          "Hours: " + copyTime.Elapsed.Hours + "\n" +
+                          "Seconds: " + copyTime.Elapsed.Seconds + "\n" +
+                          "Milliseconds: " + copyTime.Elapsed.Milliseconds;
+
+            var caption = "Migration Completed";
+            var buttons = MessageBoxButtons.OK;
+            MessageBox.Show(message, caption, buttons);
 
 
         }
@@ -77,12 +73,11 @@ namespace RoboMigratorGUI
         {
             foreach (var sourceSubDirectory in ProcessDirectory(_sourceDirectory))
             {
-                if (sourceSubDirectory != null){
-                    string[] dirpath = sourceSubDirectory.Split(new string[] { "\\" }, StringSplitOptions.RemoveEmptyEntries);
-                    string current_folder_name = dirpath.Last();
-                    string destinationSubDirectory = _destinationDirectory + "\\" + current_folder_name;
-                    _jobs.Add(sourceSubDirectory, destinationSubDirectory);
-                }
+                if (sourceSubDirectory == null) continue;
+                string[] dirpath = sourceSubDirectory.Split(new string[] { "\\" }, StringSplitOptions.RemoveEmptyEntries);
+                string current_folder_name = dirpath.Last();
+                string destinationSubDirectory = _destinationDirectory + "\\" + current_folder_name;
+                _jobs.Add(sourceSubDirectory, destinationSubDirectory);
             }
 
             //this creates a robocommand for the root directory files (excluding subdirs) using different parameters.
@@ -93,33 +88,24 @@ namespace RoboMigratorGUI
             {
                 AddJob(job.Key, job.Value);
             }
-            string message = "TOTAL JOBS: "+ _jobList.Count + "\n";
+            var message = "TOTAL JOBS: "+ _jobList.Count + "\n";
             foreach (RoboCommand job in _jobList)
             {
-                message = message + job.CopyOptions.Source.ToString() + "\n";
+                message = message + job.CopyOptions.Source + "\n";
             }
-            string caption = "DEBUG MESSAGE - JOBS IN _jobs";
-            MessageBoxButtons buttons = MessageBoxButtons.OK;
+            var caption = "DEBUG MESSAGE - JOBS IN _jobs";
+            var buttons = MessageBoxButtons.OK;
             MessageBox.Show(message, caption, buttons);
         }
 
-        public int GetRunningJobs()
+        private int GetRunningJobs()
         {
-            int runningJobs = 0;
-            foreach (RoboCommand job in _jobList)
-            {
-                //if it is running, add it to the running total
-                if (job.IsRunning | job.IsPaused)
-                    {
-                    runningJobs++;
-                    }
-            }
-            return runningJobs;
+            return _jobList.Count(job => job.IsRunning | job.IsPaused);
         }
 
-        public void AddJob(string sourceDirectory, string destinationDirectory)
+        private void AddJob(string sourceDirectory, string destinationDirectory)
         {
-            RoboCommand backup = new RoboCommand();
+            var backup = new RoboCommand();
             backup.OnCommandCompleted += OnBackupCommandCompletion;
             backup.OnFileProcessed += OnBackupFileProcessed;
             backup.OnCopyProgressChanged += Backup_OnCopyProgressChanged;
@@ -147,43 +133,6 @@ namespace RoboMigratorGUI
             backup.RetryOptions.RetryCount = 1;
             backup.RetryOptions.RetryWaitTime = 2;
             _jobList.Add(backup);
-
-        }
-        public void AddRootDirectoryJob(string sourceDirectory, string destinationDirectory)
-        {
-            RoboCommand backup = new RoboCommand();
-            backup.OnCommandCompleted += OnBackupCommandCompletion;
-            backup.OnFileProcessed += OnBackupFileProcessed;
-            backup.OnCopyProgressChanged += Backup_OnCopyProgressChanged;
-
-            // copy options
-            backup.CopyOptions.Source = sourceDirectory;
-            backup.CopyOptions.Destination = destinationDirectory;
-            backup.CopyOptions.CopySubdirectories = false;
-            backup.CopyOptions.CopySubdirectoriesIncludingEmpty = false;
-            backup.CopyOptions.Depth = 1;
-            backup.CopyOptions.UseUnbufferedIo = true;
-            backup.CopyOptions.Mirror = true;
-            backup.CopyOptions.EnableRestartMode = true;
-            backup.CopyOptions.CopyFlags = "DAT";
-            backup.CopyOptions.MultiThreadedCopiesCount = 16;
-
-            //logging options
-            backup.LoggingOptions.NoProgress = true;
-            backup.LoggingOptions.NoDirectoryList = true;
-            backup.LoggingOptions.NoFileList = true;
-            backup.LoggingOptions.ReportExtraFiles = true;
-            backup.LoggingOptions.NoFileClasses = true;
-
-
-            // select options
-            backup.SelectionOptions.OnlyCopyArchiveFilesAndResetArchiveFlag = false;
-
-            // retry options
-            backup.RetryOptions.RetryCount = 1;
-            backup.RetryOptions.RetryWaitTime = 2;
-            _jobList.Add(backup);
-
         }
 
         private void Backup_OnCopyProgressChanged(object sender, CopyProgressEventArgs e)
@@ -203,14 +152,14 @@ namespace RoboMigratorGUI
         {
                 RoboSharp.Results.RoboCopyResults results = e.Results;
                 _jobResults.Add(results);
-                completedJobs++;
+                _completedJobs++;
                 var logFileName = ParseLogFileName(e.Results.LogLines);
                 //Set our log file name to directory copied name + current year, month, day, hour, and minute
-                string logFile = logPath + "\\" + logFileName + "_" + DateTime.Now.Year.ToString()
+                string logFile = _logDirectory + "\\" + logFileName + "_" + DateTime.Now.Year.ToString()
                 + "-" + DateTime.Now.Month.ToString() + "-" + DateTime.Now.Day.ToString() + "-"
                 + DateTime.Now.Hour.ToString() + "-" + DateTime.Now.Minute.ToString() + ".log";
 
-                status = "Migrated: " + logFile;
+                _status = "Migrated: " + logFile;
                 using (TextWriter tw = new StreamWriter(logFile))
                 {
                     tw.WriteLine("------OUTPUT OF e.Results.LogLines------");
@@ -229,24 +178,9 @@ namespace RoboMigratorGUI
                     tw.WriteLine("Millieconds: ");
                     tw.WriteLine(copyTime.Elapsed.Milliseconds.ToString());
                 
-            }
-            
-
+                }
         }
 
-        public void ShowJobResults()
-        {
-            foreach(RoboSharp.Results.RoboCopyResults result in _jobResults)
-            {
-                Console.WriteLine(result.ToString());
-            }
-        }
-
-        public List<RoboSharp.Results.RoboCopyResults> GetJobResults()
-        {
-            List<string> jobResults = new List<string>();
-            return _jobResults;
-        }
         private static string[] ProcessDirectory(string targetDirectory)
         {
             if (Directory.Exists(targetDirectory))
@@ -255,16 +189,14 @@ namespace RoboMigratorGUI
 
                 return subdirectoryEntries;
             }
-            else
-            {
-                Console.WriteLine("Directory is not reachable or does not exist: " + targetDirectory);
-                return null;
-            }
+
+            Console.WriteLine("Directory is not reachable or does not exist: " + targetDirectory);
+            return null;
         }
 
         private static string ParseLogFileName(string[] jobResults)
         {
-           string dir = jobResults[7];
+           var dir = jobResults[7];
            var dirname = dir.Replace(" ", "").Split(new string[] { "\\" }, StringSplitOptions.RemoveEmptyEntries).ToList().Last();
 
            return dirname;

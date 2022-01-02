@@ -11,8 +11,7 @@ namespace RoboMigratorGUI
 
         private void button1_Click(object sender, EventArgs e)
         {
-            BackupJob backupJob = new BackupJob(SourceTextBox.Text, DestinationTextBox.Text);
-            backupJob.logPath = LogPathText.Text;
+            var backupJob = new BackupJob(SourceTextBox.Text, DestinationTextBox.Text, LogPathText.Text);
             backupJob.Start();
             
         }
@@ -24,7 +23,7 @@ namespace RoboMigratorGUI
 
         private void button2_Click(object sender, EventArgs e)
         {
-            DirCompare compare = new DirCompare();
+            var compare = new DirCompare();
             compare.CompareDirectories(SourceTextBox.Text, DestinationTextBox.Text);
         }
     }
