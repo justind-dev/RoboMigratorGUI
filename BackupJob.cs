@@ -12,22 +12,16 @@ public class BackupJob
     private readonly string _sourceDirectory;
     private readonly string _destinationDirectory;
     private readonly string _logDirectory;
-    private readonly int _maxJobs;
-        
-    private Dictionary<string, string> _jobs;
+
     private List<RoboCommand> _jobList;
     private List<RoboSharp.Results.RoboCopyResults> _jobResults;
-    private int _totalJobs;
-    private int _completedJobs;
-    private int _runningJobs;     
 
     public BackupJob(string sourceDirectory, string destinationDirectory, string logDirectory, int maxJobs = 8)
     {
         _sourceDirectory = sourceDirectory;
         _destinationDirectory = destinationDirectory;
         _logDirectory = logDirectory;
-        _maxJobs = maxJobs;
-            
+
         CreateJobs();
     }
 
@@ -36,27 +30,9 @@ public class BackupJob
         Status = new string("");
         CopyTime = new Stopwatch();
         _jobResults = new List<RoboSharp.Results.RoboCopyResults>();
-        _totalJobs = _jobList.Count;
-        _runningJobs = GetRunningJobs();
+        GetRunningJobs();
         
         CopyTime.Start();
-        //if (_jobList.Count <= 0) return;
-        //foreach (var job in _jobList)
-        //    {
-        //    if (_completedJobs < _totalJobs)
-        //    {
-        //        RunJobAsync(job);
-        //        _runningJobs = GetRunningJobs();
-        //        _completedJobs = GetCompletedJobs();
-        //    }
-        //        while (_runningJobs >= _maxJobs)
-        //        {
-        //            Thread.Sleep(500);
-        //            _runningJobs = GetRunningJobs();
-        //            _completedJobs = GetCompletedJobs();
-        //        }
-        //    }
-        // testing why each job gets ran 2x instead of once. It still gets run twice as it is I believe..
         foreach (var job in _jobList)
         {
             RunJobAsync(job);
@@ -72,7 +48,7 @@ public class BackupJob
 
     private void CreateJobs()
     {
-        _jobs = new Dictionary<string, string>();
+        new Dictionary<string, string>();
         _jobList = new List<RoboCommand>();
         
         
@@ -94,11 +70,6 @@ public class BackupJob
         return _jobList.Count(job => job.IsRunning | job.IsPaused);
     }
 
-    private int GetCompletedJobs()
-    {
-        return _jobResults.Count(result => result.Status.ExitCode.ToString() == "FilesCopiedSuccessfully" |
-                                           result.Status.ExitCode.ToString() == "NoErrorNoCopy");
-    }
     private void AddJob(string jobSourceDirectory, string jobDestinationDirectory)
     {
         var backup = new RoboCommand();
@@ -144,8 +115,7 @@ public class BackupJob
     private void Backup_OnBackupCommandCompletion(object sender, RoboCommandCompletedEventArgs e)
     {
         _jobResults.Add(e.Results);
-        _completedJobs++;
-            
+
         var logFileName = ParseLogFileName(e.Results.LogLines);
             
         //Set our log file name to directory copied name + current year, month, day, hour, and minute
