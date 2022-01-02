@@ -51,8 +51,6 @@ public class BackupJob
         new Dictionary<string, string>();
         _jobList = new List<RoboCommand>();
         
-        
-
         foreach (var sourceSubDirectory in ProcessDirectory(_sourceDirectory))
         {
             if (sourceSubDirectory == null) continue;
