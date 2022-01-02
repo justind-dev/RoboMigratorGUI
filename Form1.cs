@@ -15,7 +15,8 @@ namespace RoboMigratorGUI
             var message = "Migration completed in:\n" +
                           "Hours: " + copyTimer.Elapsed.Hours + "\n" +
                           "Seconds: " + copyTimer.Elapsed.Seconds + "\n" +
-                          "Milliseconds: " + copyTimer.Elapsed.Milliseconds;
+                          "Milliseconds: " + copyTimer.Elapsed.Milliseconds + "\n" +
+                          "Time Completed: " + DateTime.Now.ToString();
 
             var caption = "Migration Completed";
             var buttons = MessageBoxButtons.OK;

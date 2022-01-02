@@ -19,7 +19,7 @@ public class BackupJob
     private List<RoboSharp.Results.RoboCopyResults> _jobResults;
     private int _totalJobs;
     private int _completedJobs;
-    private int _runningJobs;
+    private int _runningJobs;     
 
     public BackupJob(string sourceDirectory, string destinationDirectory, string logDirectory, int maxJobs = 8)
     {
@@ -40,22 +40,28 @@ public class BackupJob
         _runningJobs = GetRunningJobs();
         
         CopyTime.Start();
-        if (_jobList.Count <= 0) return;
-        while (_jobResults.Count < _totalJobs)
+        //if (_jobList.Count <= 0) return;
+        //foreach (var job in _jobList)
+        //    {
+        //    if (_completedJobs < _totalJobs)
+        //    {
+        //        RunJobAsync(job);
+        //        _runningJobs = GetRunningJobs();
+        //        _completedJobs = GetCompletedJobs();
+        //    }
+        //        while (_runningJobs >= _maxJobs)
+        //        {
+        //            Thread.Sleep(500);
+        //            _runningJobs = GetRunningJobs();
+        //            _completedJobs = GetCompletedJobs();
+        //        }
+        //    }
+        // testing why each job gets ran 2x instead of once. It still gets run twice as it is I believe..
+        foreach (var job in _jobList)
         {
-            foreach (var job in _jobList.Where(job => !job.IsRunning & !job.IsPaused))
-            {
-                Status = "Migrating: " + job.CopyOptions.Source;
-                RunJobAsync(job);
-                _runningJobs = GetRunningJobs();
-                while (_runningJobs >= _maxJobs && _runningJobs > 0)
-                {
-                    Thread.Sleep(2000);
-                    _runningJobs = GetRunningJobs();
-                    Status = "Jobs Running: " + _runningJobs;
-                }
-            }
+            RunJobAsync(job);
         }
+        
         CopyTime.Stop();
     }
         
@@ -63,11 +69,13 @@ public class BackupJob
     {
         await roboCommand.Start();
     }
-        
+
     private void CreateJobs()
     {
         _jobs = new Dictionary<string, string>();
         _jobList = new List<RoboCommand>();
+        
+        
 
         foreach (var sourceSubDirectory in ProcessDirectory(_sourceDirectory))
         {
@@ -77,6 +85,8 @@ public class BackupJob
             var destinationSubDirectory = _destinationDirectory + @"\" + currentFolderName;
             AddJob(sourceSubDirectory, destinationSubDirectory);
         }
+        // add job for root directory files
+        AddJob(_sourceDirectory, _destinationDirectory);
     }
 
     private int GetRunningJobs()
@@ -84,33 +94,50 @@ public class BackupJob
         return _jobList.Count(job => job.IsRunning | job.IsPaused);
     }
 
-    private void AddJob(string sourceDirectory, string destinationDirectory)
+    private int GetCompletedJobs()
+    {
+        return _jobResults.Count(result => result.Status.ExitCode.ToString() == "FilesCopiedSuccessfully" |
+                                           result.Status.ExitCode.ToString() == "NoErrorNoCopy");
+    }
+    private void AddJob(string jobSourceDirectory, string jobDestinationDirectory)
     {
         var backup = new RoboCommand();
         backup.OnCommandCompleted += Backup_OnBackupCommandCompletion;
 
         // copy options
-        backup.CopyOptions.Source = sourceDirectory;
-        backup.CopyOptions.Destination = destinationDirectory;
-        backup.CopyOptions.CopySubdirectories = true;
-        backup.CopyOptions.UseUnbufferedIo = false;
-        backup.CopyOptions.Mirror = true;
+        backup.CopyOptions.Source = jobSourceDirectory;
+        backup.CopyOptions.Destination = jobDestinationDirectory;
+        backup.CopyOptions.Purge = true;
+        //set different options for source directory so that it doesnt try to copy sub directories and only copies files in root of source.
+        if (jobSourceDirectory == _sourceDirectory && jobDestinationDirectory == _destinationDirectory)
+        {
+            backup.CopyOptions.CopySubdirectoriesIncludingEmpty = false;
+            backup.CopyOptions.CopySubdirectories = false;
+            backup.CopyOptions.Depth = 1;
+        }
+        else
+        {
+            backup.CopyOptions.CopySubdirectoriesIncludingEmpty = true;
+            backup.CopyOptions.CopySubdirectories = true;
+            backup.CopyOptions.Depth = 0;
+        }
+        backup.CopyOptions.CopyFlags = "DAT";
+        backup.CopyOptions.DirectoryCopyFlags = "DAT";
         backup.CopyOptions.EnableRestartMode = true;
         backup.CopyOptions.MultiThreadedCopiesCount = 16;
-        backup.CopyOptions.CopyFlags = "DAT";
-            
+
+        
         //logging options
         backup.LoggingOptions.NoProgress = true;
         backup.LoggingOptions.NoDirectoryList = true;
         backup.LoggingOptions.NoFileList = true;
         backup.LoggingOptions.NoFileClasses = true;
 
-        // select options
-        backup.SelectionOptions.OnlyCopyArchiveFilesAndResetArchiveFlag = false;
-
         // retry options
         backup.RetryOptions.RetryCount = 1;
         backup.RetryOptions.RetryWaitTime = 2;
+
+        //add job
         _jobList.Add(backup);
     }
 
@@ -143,9 +170,10 @@ public class BackupJob
 
             return subdirectoryEntries;
         }
-
-        Console.WriteLine("Directory is not reachable or does not exist: " + targetDirectory);
-        return null;
+        else
+        {
+            return null;
+        }
     }
 
     private static string ParseLogFileName(string[] jobResults)
