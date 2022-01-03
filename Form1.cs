@@ -9,6 +9,7 @@ public partial class Form1 : Form
     private RoboSharp.Results.RoboCopyResultsList JobResults = new RoboSharp.Results.RoboCopyResultsList();
     //Initialize the RoboQueue object which will handle the multijob logic.
     RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
+
     //Creating an overall copy time log. This may be already implemented in RoboQueue Results and will explore that.
     Stopwatch copyTime = new Stopwatch();
 
@@ -16,6 +17,13 @@ public partial class Form1 : Form
     public Form1()
     {
         InitializeComponent();
+        //RoboQueue Setup
+        roboQueue.OnCommandError += RoboQueue_OnCommandError;
+        roboQueue.OnError += RoboQueue_OnError; ;
+        roboQueue.OnCommandCompleted += RoboQueue_OnCommandCompleted; ;
+        //roboQueue.OnProgressEstimatorCreated += RoboQueue_OnProgressEstimatorCreated;
+        roboQueue.OnCommandStarted += RoboQueue_OnCommandStarted;
+        roboQueue.CollectionChanged += RoboQueue_CollectionChanged;
     }
 
     //Parses log file names so that log file name matches the directory that was copied.
@@ -100,27 +108,24 @@ public partial class Form1 : Form
     //This takes the source directory, and splits it into RoboCommand copy jobs for each underlying directory.
     private void CreateJobs()
     {
-        var _jobs = new Dictionary<string, string>();
-        List<RoboCommand> _jobList = new List<RoboCommand>();
-        RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
+        //REMOVE COMMENTED BELOW ONCE NO LONGER NEEDED
+        //var _jobs = new Dictionary<string, string>();
+        //List<RoboCommand> _jobList = new List<RoboCommand>();
+        //END REMOVE SECTION
         foreach (var sourceSubDirectory in ProcessDirectory(SourceTextBox.Text))
 
         {
-            if (sourceSubDirectory == null) continue;
+            if (sourceSubDirectory == null) { return; }
             var directoryPaths = sourceSubDirectory.Split('\\', StringSplitOptions.RemoveEmptyEntries);
             var currentFolderName = directoryPaths.Last();
             var destinationSubDirectory = DestinationTextBox.Text + @"\" + currentFolderName;
-            if (!roboQueue.IsRunning)
-            {
-                roboQueue.AddCommand(GetCommand(false, sourceSubDirectory, destinationSubDirectory));
-            }
+            roboQueue.AddCommand(GetCommand(false, sourceSubDirectory, destinationSubDirectory));
+
 
         }
         // add job for root directory files
-        if (!roboQueue.IsRunning)
-        {
-            roboQueue.AddCommand(GetCommand(false, SourceTextBox.Text, DestinationTextBox.Text));
-        }
+        roboQueue.AddCommand(GetCommand(false, SourceTextBox.Text, DestinationTextBox.Text));
+
     }
 
     //Processes a given directory, returning sub-directory names
@@ -137,7 +142,7 @@ public partial class Form1 : Form
             return null;
         }
     }
-    
+
     //Really only for debugging copy times.
     private void DisplayCopyInformation(Stopwatch copyTimer)
     {
@@ -150,6 +155,36 @@ public partial class Form1 : Form
         var caption = "Migration Completed";
         var buttons = MessageBoxButtons.OK;
         MessageBox.Show(message, caption, buttons);
+    }
+
+    private void RoboQueue_OnProgressEstimatorCreated(RoboQueue sender, RoboSharp.Results.ProgressEstimatorCreatedEventArgs e)
+    {
+        // TO DO : Bind to the estimators 
+    }
+
+    private void RoboQueue_OnCommandStarted(RoboQueue sender, RoboQueue.CommandStartedEventArgs e)
+    {
+        // TO DO : Add MultiJob_CommandProgressIndicator to window
+    }
+
+    private void RoboQueue_OnCommandCompleted(RoboCommand sender, RoboCommandCompletedEventArgs e)
+    {
+        // TO DO : Disable associated MultiJob_CommandProgressIndicator to window
+    }
+
+    private void RoboQueue_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        // TO DO : Remove associated MultiJob_CommandProgressIndicator
+    }
+
+    private void RoboQueue_OnError(RoboCommand sender, RoboSharp.ErrorEventArgs e)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void RoboQueue_OnCommandError(RoboCommand sender, CommandErrorEventArgs e)
+    {
+        throw new NotImplementedException();
     }
 
     private async void StartMigration()
