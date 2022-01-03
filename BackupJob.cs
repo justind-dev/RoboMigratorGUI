@@ -12,43 +12,37 @@ public class BackupJob
     private readonly string _sourceDirectory;
     private readonly string _destinationDirectory;
     private readonly string _logDirectory;
-
+        
+    private Dictionary<string, string> _jobs;
     private List<RoboCommand> _jobList;
     private List<RoboSharp.Results.RoboCopyResults> _jobResults;
+    private int _totalJobs;
+    private int _completedJobs;
+    private int _runningJobs;
+    private RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
 
     public BackupJob(string sourceDirectory, string destinationDirectory, string logDirectory, int maxJobs = 8)
     {
         _sourceDirectory = sourceDirectory;
         _destinationDirectory = destinationDirectory;
         _logDirectory = logDirectory;
-
+        roboQueue.MaxConcurrentJobs = maxJobs;
+            
         CreateJobs();
     }
 
-    public void Start()
+    public async void Start()
     {
-        Status = new string("");
+
         CopyTime = new Stopwatch();
-        _jobResults = new List<RoboSharp.Results.RoboCopyResults>();
-        GetRunningJobs();
-        
         CopyTime.Start();
-        foreach (var job in _jobList)
-        {
-            RunJobAsync(job);
-        }
-        
+        await roboQueue.StartAll();        
         CopyTime.Stop();
     }
         
-    private async Task RunJobAsync(IRoboCommand roboCommand)
-    {
-        await roboCommand.Start();
-    }
-
     private void CreateJobs()
     {
-        new Dictionary<string, string>();
+        _jobs = new Dictionary<string, string>();
         _jobList = new List<RoboCommand>();
         
         foreach (var sourceSubDirectory in ProcessDirectory(_sourceDirectory))
@@ -57,10 +51,17 @@ public class BackupJob
             var directoryPaths = sourceSubDirectory.Split('\\', StringSplitOptions.RemoveEmptyEntries);
             var currentFolderName = directoryPaths.Last();
             var destinationSubDirectory = _destinationDirectory + @"\" + currentFolderName;
-            AddJob(sourceSubDirectory, destinationSubDirectory);
+            if (!roboQueue.IsRunning)
+            {
+                roboQueue.AddCommand(GetCommand(false, sourceSubDirectory, destinationSubDirectory));
+            }
+            
         }
         // add job for root directory files
-        AddJob(_sourceDirectory, _destinationDirectory);
+        if (!roboQueue.IsRunning)
+        {
+            roboQueue.AddCommand(GetCommand(false, _sourceDirectory, _destinationDirectory));
+        }
     }
 
     private int GetRunningJobs()
@@ -68,10 +69,18 @@ public class BackupJob
         return _jobList.Count(job => job.IsRunning | job.IsPaused);
     }
 
-    private void AddJob(string jobSourceDirectory, string jobDestinationDirectory)
+    private int GetCompletedJobs()
     {
-        var backup = new RoboCommand();
-        backup.OnCommandCompleted += Backup_OnBackupCommandCompletion;
+        return _jobResults.Count(result => result.Status.ExitCode.ToString() == "FilesCopiedSuccessfully" |
+                                           result.Status.ExitCode.ToString() == "NoErrorNoCopy");
+    }
+    private RoboCommand GetCommand(bool BindEvents, string jobSourceDirectory, string jobDestinationDirectory)
+    {
+        RoboCommand backup = new RoboCommand();
+        if (BindEvents)
+        {
+            backup.OnCommandCompleted += Backup_OnBackupCommandCompletion;
+        }
 
         // copy options
         backup.CopyOptions.Source = jobSourceDirectory;
@@ -107,13 +116,14 @@ public class BackupJob
         backup.RetryOptions.RetryWaitTime = 2;
 
         //add job
-        _jobList.Add(backup);
+        return backup;
     }
 
     private void Backup_OnBackupCommandCompletion(object sender, RoboCommandCompletedEventArgs e)
     {
         _jobResults.Add(e.Results);
-
+        _completedJobs++;
+            
         var logFileName = ParseLogFileName(e.Results.LogLines);
             
         //Set our log file name to directory copied name + current year, month, day, hour, and minute
