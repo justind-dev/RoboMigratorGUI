@@ -5,9 +5,11 @@ namespace RoboMigratorGUI;
 
 public partial class Form1 : Form
 {
-
+    //Stores the Job Results in a results list object.
     private RoboSharp.Results.RoboCopyResultsList JobResults = new RoboSharp.Results.RoboCopyResultsList();
+    //Initialize the RoboQueue object which will handle the multijob logic.
     RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
+    //Creating an overall copy time log. This may be already implemented in RoboQueue Results and will explore that.
     Stopwatch copyTime = new Stopwatch();
 
 
@@ -15,6 +17,17 @@ public partial class Form1 : Form
     {
         InitializeComponent();
     }
+
+    //Parses log file names so that log file name matches the directory that was copied.
+    private static string ParseLogFileName(string[] jobResults)
+    {
+        var dir = jobResults[7];
+        var dirname = dir.Replace(" ", "").Split(new string[] { "\\" }, StringSplitOptions.RemoveEmptyEntries).ToList().Last();
+
+        return dirname;
+    }
+
+    //called from the generated RoboCommand below upon Command completion.
     void Backup_OnBackupCommandCompletion(object sender, RoboCommandCompletedEventArgs e)
     {
 
@@ -23,7 +36,22 @@ public partial class Form1 : Form
         Console.WriteLine("Files copied: " + results.FilesStatistic.Copied);
         Console.WriteLine("Directories copied: " + results.DirectoriesStatistic.Copied);
         JobResults.Add(e.Results);
+        //write the log file
+        var logFileName = ParseLogFileName(e.Results.LogLines);
+
+        //Set our log file name to directory copied name + current year, month, day, hour, and minute
+        var logFile = LogPathText.Text + "\\" + logFileName + "_" + DateTime.Now.Year.ToString()
+                      + "-" + DateTime.Now.Month.ToString() + "-" + DateTime.Now.Day.ToString() + "-"
+                      + DateTime.Now.Hour.ToString() + "-" + DateTime.Now.Minute.ToString() + ".log";
+
+        using TextWriter tw = new StreamWriter(logFile);
+        foreach (var line in e.Results.LogLines)
+        {
+            tw.WriteLine(line);
+        }
     }
+
+    //This generates a robocommand backup job with desired config and returns it.
     private RoboCommand GetCommand(bool BindEvents, string jobSourceDirectory, string jobDestinationDirectory)
     {
         RoboCommand backup = new RoboCommand();
@@ -68,6 +96,8 @@ public partial class Form1 : Form
         //add job
         return backup;
     }
+
+    //This takes the source directory, and splits it into RoboCommand copy jobs for each underlying directory.
     private void CreateJobs()
     {
         var _jobs = new Dictionary<string, string>();
@@ -92,6 +122,8 @@ public partial class Form1 : Form
             roboQueue.AddCommand(GetCommand(false, SourceTextBox.Text, DestinationTextBox.Text));
         }
     }
+
+    //Processes a given directory, returning sub-directory names
     private static string[] ProcessDirectory(string targetDirectory)
     {
         if (Directory.Exists(targetDirectory))
@@ -105,6 +137,8 @@ public partial class Form1 : Form
             return null;
         }
     }
+    
+    //Really only for debugging copy times.
     private void DisplayCopyInformation(Stopwatch copyTimer)
     {
         var message = "Migration completed in:\n" +
@@ -124,6 +158,8 @@ public partial class Form1 : Form
         await roboQueue.StartAll();
         copyTime.Stop();
     }
+
+    //this Button needs renamed to button_StartMigration
     private void button1_Click(object sender, EventArgs e)
     {
         roboQueue.MaxConcurrentJobs = 8;
@@ -147,16 +183,18 @@ public partial class Form1 : Form
 
     }
 
+    //Place holder for once we work out how to display status / currently running jobs / or copy results.
     private void label3_Click(object sender, EventArgs e)
     {
 
     }
-
+    //This needs renamed to buttom_CompareDirectories
     private void button2_Click(object sender, EventArgs e)
     {
         var compare = new DirCompare();
         compare.CompareDirectories(SourceTextBox.Text, DestinationTextBox.Text);
     }
+
 
     private void Form1_Load(object sender, EventArgs e)
     {
