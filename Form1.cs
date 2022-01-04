@@ -8,7 +8,7 @@ public partial class Form1 : Form
     //Stores the Job Results in a results list object.
     private RoboSharp.Results.RoboCopyResultsList JobResults = new RoboSharp.Results.RoboCopyResultsList();
     //Initialize the RoboQueue object which will handle the multijob logic.
-    RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
+    private RoboSharp.RoboQueue roboQueue = new RoboSharp.RoboQueue();
 
     //Creating an overall copy time log. This may be already implemented in RoboQueue Results and will explore that.
     Stopwatch copyTime = new Stopwatch();
@@ -17,6 +17,7 @@ public partial class Form1 : Form
     public Form1()
     {
         InitializeComponent();
+
         //RoboQueue Setup
         roboQueue.OnCommandError += RoboQueue_OnCommandError;
         roboQueue.OnError += RoboQueue_OnError; ;
@@ -24,6 +25,7 @@ public partial class Form1 : Form
         //roboQueue.OnProgressEstimatorCreated += RoboQueue_OnProgressEstimatorCreated;
         roboQueue.OnCommandStarted += RoboQueue_OnCommandStarted;
         roboQueue.CollectionChanged += RoboQueue_CollectionChanged;
+        roboQueue.MaxConcurrentJobs = 8;
     }
 
     //Parses log file names so that log file name matches the directory that was copied.
@@ -38,7 +40,6 @@ public partial class Form1 : Form
     //called from the generated RoboCommand below upon Command completion.
     void Backup_OnBackupCommandCompletion(object sender, RoboCommandCompletedEventArgs e)
     {
-
 
         var results = e.Results;
         Console.WriteLine("Files copied: " + results.FilesStatistic.Copied);
@@ -75,9 +76,10 @@ public partial class Form1 : Form
         //set different options for source directory so that it doesnt try to copy sub directories and only copies files in root of source.
         if (jobSourceDirectory == SourceTextBox.Text && jobDestinationDirectory == DestinationTextBox.Text)
         {
+            backup.CopyOptions.Mirror = true;
             backup.CopyOptions.CopySubdirectoriesIncludingEmpty = false;
             backup.CopyOptions.CopySubdirectories = false;
-            backup.CopyOptions.Depth = 1;
+            backup.CopyOptions.Depth = 2;
         }
         else
         {
@@ -108,10 +110,6 @@ public partial class Form1 : Form
     //This takes the source directory, and splits it into RoboCommand copy jobs for each underlying directory.
     private void CreateJobs()
     {
-        //REMOVE COMMENTED BELOW ONCE NO LONGER NEEDED
-        //var _jobs = new Dictionary<string, string>();
-        //List<RoboCommand> _jobList = new List<RoboCommand>();
-        //END REMOVE SECTION
         foreach (var sourceSubDirectory in ProcessDirectory(SourceTextBox.Text))
 
         {
@@ -119,12 +117,12 @@ public partial class Form1 : Form
             var directoryPaths = sourceSubDirectory.Split('\\', StringSplitOptions.RemoveEmptyEntries);
             var currentFolderName = directoryPaths.Last();
             var destinationSubDirectory = DestinationTextBox.Text + @"\" + currentFolderName;
-            roboQueue.AddCommand(GetCommand(false, sourceSubDirectory, destinationSubDirectory));
+            roboQueue.AddCommand(GetCommand(true, sourceSubDirectory, destinationSubDirectory));
 
 
         }
         // add job for root directory files
-        roboQueue.AddCommand(GetCommand(false, SourceTextBox.Text, DestinationTextBox.Text));
+        roboQueue.AddCommand(GetCommand(true, SourceTextBox.Text, DestinationTextBox.Text));
 
     }
 
@@ -148,6 +146,7 @@ public partial class Form1 : Form
     {
         var message = "Migration completed in:\n" +
                       "Hours: " + copyTimer.Elapsed.Hours + "\n" +
+                      "Minutes: " + copyTimer.Elapsed.Minutes + "\n" +
                       "Seconds: " + copyTimer.Elapsed.Seconds + "\n" +
                       "Milliseconds: " + copyTimer.Elapsed.Milliseconds + "\n" +
                       "Time Completed: " + DateTime.Now.ToString();
@@ -187,23 +186,25 @@ public partial class Form1 : Form
         throw new NotImplementedException();
     }
 
-    private async void StartMigration()
+    private async void StartMigrationAsync()
     {
+        copyTime.Reset();
         copyTime.Start();
         await roboQueue.StartAll();
         copyTime.Stop();
+        DisplayCopyInformation(copyTime);
     }
 
     //this Button needs renamed to button_StartMigration
     private void button1_Click(object sender, EventArgs e)
     {
-        roboQueue.MaxConcurrentJobs = 8;
+        
         if (!roboQueue.IsRunning)
         {
             if (SourceTextBox.Text != "" | DestinationTextBox.Text != "")
             {
                 CreateJobs();
-                StartMigration();
+                StartMigrationAsync();
             }
             else
             {
@@ -227,13 +228,12 @@ public partial class Form1 : Form
     private void button2_Click(object sender, EventArgs e)
     {
         var compare = new DirCompare();
-        compare.CompareDirectories(SourceTextBox.Text, DestinationTextBox.Text);
+        compare.CompareDirectories(SourceTextBox.Text, DestinationTextBox.Text, LogPathText.Text);
     }
 
 
     private void Form1_Load(object sender, EventArgs e)
     {
-
     }
 
 

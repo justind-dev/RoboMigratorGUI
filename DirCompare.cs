@@ -2,7 +2,7 @@
 {
     internal class DirCompare
     {
-        public void CompareDirectories(string sourceDirectory, string destinationDirectory)
+        public void CompareDirectories(string sourceDirectory, string destinationDirectory, string logDirectory)
         {
             var dirSourceDirectories = Directory.GetDirectories(sourceDirectory);
             var dirSourceFiles = Directory.GetFiles(sourceDirectory);
@@ -24,7 +24,7 @@
                 destCleaned.Add(line.Replace(destinationDirectory, "PATH"));
 
             }
-            using (TextWriter tw = new StreamWriter(@"C:\1\differences.txt"))
+            using (TextWriter tw = new StreamWriter(logDirectory + @"\differences.txt"))
             {
                 tw.WriteLine("DIRECTORY DIFFERENCES");
                 var firstNotSecond = sourceCleaned.Except(destCleaned).ToList();
