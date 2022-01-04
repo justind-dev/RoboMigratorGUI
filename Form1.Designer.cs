@@ -36,8 +36,6 @@
             this.button2 = new System.Windows.Forms.Button();
             this.LogPathText = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.statusLabel = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -111,31 +109,11 @@
             this.label3.Text = "Log Path";
             this.label3.Click += new System.EventHandler(this.label3_Click);
             // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(32, 105);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(47, 15);
-            this.label4.TabIndex = 5;
-            this.label4.Text = "STATUS";
-            // 
-            // statusLabel
-            // 
-            this.statusLabel.AutoSize = true;
-            this.statusLabel.Location = new System.Drawing.Point(87, 104);
-            this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(58, 15);
-            this.statusLabel.TabIndex = 6;
-            this.statusLabel.Text = "No Status";
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(613, 266);
-            this.Controls.Add(this.statusLabel);
-            this.Controls.Add(this.label4);
             this.Controls.Add(this.LogPathText);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.button1);
@@ -146,6 +124,7 @@
             this.Controls.Add(this.label1);
             this.Name = "Form1";
             this.Text = "RoboMigrator";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -161,7 +140,5 @@
         private Button button2;
         private TextBox LogPathText;
         private Label label3;
-        private Label label4;
-        private Label statusLabel;
     }
 }
