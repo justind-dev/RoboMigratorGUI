@@ -36,6 +36,8 @@
             this.button2 = new System.Windows.Forms.Button();
             this.LogPathText = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.label_Status = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -109,11 +111,31 @@
             this.label3.Text = "Log Path";
             this.label3.Click += new System.EventHandler(this.label3_Click);
             // 
+            // label_Status
+            // 
+            this.label_Status.AutoSize = true;
+            this.label_Status.Location = new System.Drawing.Point(85, 104);
+            this.label_Status.Name = "label_Status";
+            this.label_Status.Size = new System.Drawing.Size(36, 15);
+            this.label_Status.TabIndex = 5;
+            this.label_Status.Text = "None";
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(29, 104);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(50, 15);
+            this.label4.TabIndex = 6;
+            this.label4.Text = "STATUS:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(613, 266);
+            this.Controls.Add(this.label4);
+            this.Controls.Add(this.label_Status);
             this.Controls.Add(this.LogPathText);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.button1);
@@ -140,5 +162,7 @@
         private Button button2;
         private TextBox LogPathText;
         private Label label3;
+        private Label label_Status;
+        private Label label4;
     }
 }

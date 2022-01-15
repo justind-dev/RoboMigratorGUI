@@ -16,7 +16,7 @@
             var dirDestinationDirectories = Directory.GetDirectories(destinationDirectory);
             var dirDestinationFiles = Directory.GetFiles(destinationDirectory);
             var dirDestinationStructure = dirDestinationDirectories.Concat(dirDestinationFiles).ToList();
-            
+
             List<string> destCleaned = new List<string>();
 
             foreach (string line in dirDestinationStructure)
@@ -40,8 +40,8 @@
                     tw.WriteLine(line);
                 }
             }
-                }
-            }
+        }
+    }
 
 }
 

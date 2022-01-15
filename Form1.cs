@@ -40,14 +40,15 @@ public partial class Form1 : Form
     //called from the generated RoboCommand below upon Command completion.
     void Backup_OnBackupCommandCompletion(object sender, RoboCommandCompletedEventArgs e)
     {
-
+        
         var results = e.Results;
         Console.WriteLine("Files copied: " + results.FilesStatistic.Copied);
         Console.WriteLine("Directories copied: " + results.DirectoriesStatistic.Copied);
         JobResults.Add(e.Results);
+        label_Status.Text = "Copy complete: " + results.Source;
         //write the log file
         var logFileName = ParseLogFileName(e.Results.LogLines);
-
+        
         //Set our log file name to directory copied name + current year, month, day, hour, and minute
         var logFile = LogPathText.Text + "\\" + logFileName + "_" + DateTime.Now.Year.ToString()
                       + "-" + DateTime.Now.Month.ToString() + "-" + DateTime.Now.Day.ToString() + "-"
@@ -110,6 +111,7 @@ public partial class Form1 : Form
     //This takes the source directory, and splits it into RoboCommand copy jobs for each underlying directory.
     private void CreateJobs()
     {
+        label_Status.Text = "Creating jobs...";
         foreach (var sourceSubDirectory in ProcessDirectory(SourceTextBox.Text))
 
         {
@@ -144,6 +146,7 @@ public partial class Form1 : Form
     //Really only for debugging copy times.
     private void DisplayCopyInformation(Stopwatch copyTimer)
     {
+        label_Status.Text = "Migration completed.";
         var message = "Migration completed in:\n" +
                       "Hours: " + copyTimer.Elapsed.Hours + "\n" +
                       "Minutes: " + copyTimer.Elapsed.Minutes + "\n" +
@@ -169,6 +172,7 @@ public partial class Form1 : Form
     private void RoboQueue_OnCommandCompleted(RoboCommand sender, RoboCommandCompletedEventArgs e)
     {
         // TO DO : Disable associated MultiJob_CommandProgressIndicator to window
+
     }
 
     private void RoboQueue_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -188,6 +192,7 @@ public partial class Form1 : Form
 
     private async void StartMigrationAsync()
     {
+        label_Status.Text = "Configuring migration.";
         copyTime.Reset();
         copyTime.Start();
         await roboQueue.StartAll();
@@ -227,8 +232,10 @@ public partial class Form1 : Form
     //This needs renamed to buttom_CompareDirectories
     private void button2_Click(object sender, EventArgs e)
     {
+        label_Status.Text = "Comparing directories...";
         var compare = new DirCompare();
         compare.CompareDirectories(SourceTextBox.Text, DestinationTextBox.Text, LogPathText.Text);
+        label_Status.Text = string.Format("Please see the compare results at {0}", LogPathText.Text + "\\differences.txt");
     }
 
 
